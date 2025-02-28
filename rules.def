@@ -48,6 +48,7 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
 
     # Build mathutils from the correct repository
     cd /tmp
+    rm -rf blender-mathutils
     git clone https://gitlab.com/ideasman42/blender-mathutils.git
     cd blender-mathutils
 
