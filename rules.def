@@ -46,17 +46,41 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
     /opt/conda/bin/conda install -y -n text2tex pytorch3d -c pytorch3d
     /opt/conda/bin/conda install -y -n text2tex xformers -c xformers
 
-    # Install mathutils from PyPI directly
-    /opt/conda/bin/conda run -n text2tex pip install mathutils
+    # Build mathutils from majimboo's repository
+    cd /tmp
+    git clone https://github.com/majimboo/py-mathutils.git
+    cd py-mathutils
 
-    # Install other requirements
-    /opt/conda/bin/conda run -n text2tex pip install trimesh scikit-learn opencv-python matplotlib imageio diffusers einops transformers open-clip-torch gradio pytorch-lightning==1.9.1 omegaconf triton accelerate objaverse iopath==0.1.10
+    # Patch the mathutils.c file to fix the _Py_HashDouble function call
+    cat > src/mathutils/mathutils.c.patch << 'EOL'
+--- src/mathutils/mathutils.c.orig   2023-08-04 14:30:00.000000000 +0000
++++ src/mathutils/mathutils.c        2023-08-04 14:31:00.000000000 +0000
+@@ -76,7 +76,7 @@
+   Py_hash_t x, y;
+   int i;
+   i = 0; x = 0x345678L;
+-    y = _Py_HashDouble(NULL, (double)(array[i++]));
++    y = _Py_HashDouble((double)(array[i++]));
+     x = (1000003 * x) ^ y;
+   return x;
+ }
+EOL
+
+    # Apply the patch
+    patch -p0 < src/mathutils/mathutils.c.patch
+
+    # Install the patched version
+    /opt/conda/bin/conda run -n text2tex pip install .
+
+    # Install other requirements (excluding mathutils)
+    cd /workspace
+    grep -v mathutils requirements.txt > requirements_no_mathutils.txt
+    /opt/conda/bin/conda run -n text2tex pip install -r requirements_no_mathutils.txt
 
     # Create directories for models
     mkdir -p /workspace/models/ControlNet/models/
 
     # Download ControlNet model
-    cd /workspace
     wget -O /workspace/models/ControlNet/models/control_sd15_depth.pth https://huggingface.co/lllyasviel/ControlNet/resolve/main/models/control_sd15_depth.pth
 
     # Make workspace directory and add permissions
