@@ -2,7 +2,7 @@ Bootstrap: docker
 From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
 
 %labels
-    Author Dion Osmani
+    Author Text2Tex
     Version v1.0
 
 %environment
@@ -21,6 +21,8 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
         git \
         libgl1-mesa-glx \
         libglib2.0-0 \
+        build-essential \
+        cmake \
         && rm -rf /var/lib/apt/lists/*
 
     # Install Miniconda
@@ -47,8 +49,11 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
     /opt/conda/bin/conda install -y -n text2tex pytorch3d -c pytorch3d
     /opt/conda/bin/conda install -y -n text2tex xformers -c xformers
 
-    # Install requirements
-    /opt/conda/bin/conda run -n text2tex pip install -r /workspace/requirements.txt
+    # Install requirements manually, skipping mathutils for now
+    /opt/conda/bin/conda run -n text2tex pip install trimesh scikit-learn opencv-python matplotlib imageio diffusers einops transformers open-clip-torch gradio pytorch-lightning==1.9.1 omegaconf triton accelerate objaverse iopath==0.1.10
+
+    # Handle mathutils separately (install via conda)
+    /opt/conda/bin/conda install -y -n text2tex -c conda-forge blender
 
     # Create directories for models
     mkdir -p /workspace/models/ControlNet/models/
