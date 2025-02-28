@@ -1,0 +1,71 @@
+Bootstrap: docker
+From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
+
+%labels
+    Author Dion Osmani
+    Version v1.0
+
+%environment
+    export PATH=/opt/conda/bin:$PATH
+    export PYTHONPATH=$PYTHONPATH:/workspace
+
+%files
+    requirements.txt /workspace/requirements.txt
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+
+    # Install system dependencies
+    apt-get update && apt-get install -y \
+        wget \
+        git \
+        libgl1-mesa-glx \
+        libglib2.0-0 \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Install Miniconda
+    mkdir -p /workspace
+    cd /tmp
+    wget https://repo.anaconda.com/miniconda/Miniconda3-py39_23.3.1-0-Linux-x86_64.sh -O miniconda.sh
+    bash miniconda.sh -b -p /opt/conda
+    rm miniconda.sh
+
+    # Set up conda
+    export PATH=/opt/conda/bin:$PATH
+    conda init bash
+
+    # Create Text2Tex environment
+    conda create -y -n text2tex python=3.9.15
+
+    # Make conda activate command available
+    echo "source /opt/conda/etc/profile.d/conda.sh" >> /.bashrc
+
+    # Install PyTorch and dependencies
+    /opt/conda/bin/conda install -y -n text2tex pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
+    /opt/conda/bin/conda install -y -n text2tex -c fvcore -c iopath -c conda-forge fvcore iopath
+    /opt/conda/bin/conda install -y -n text2tex -c bottler nvidiacub
+    /opt/conda/bin/conda install -y -n text2tex pytorch3d -c pytorch3d
+    /opt/conda/bin/conda install -y -n text2tex xformers -c xformers
+
+    # Install requirements
+    /opt/conda/bin/conda run -n text2tex pip install -r /workspace/requirements.txt
+
+    # Create directories for models
+    mkdir -p /workspace/models/ControlNet/models/
+
+    # Download ControlNet model
+    cd /workspace
+    wget -O /workspace/models/ControlNet/models/control_sd15_depth.pth https://huggingface.co/lllyasviel/ControlNet/resolve/main/models/control_sd15_depth.pth
+
+    # Make workspace directory and add permissions
+    chmod -R 777 /workspace
+
+%runscript
+    source /opt/conda/etc/profile.d/conda.sh
+    conda activate text2tex
+    exec "$@"
+
+%startscript
+    source /opt/conda/etc/profile.d/conda.sh
+    conda activate text2tex
+    exec python /workspace/scripts/generate_texture.py "$@"
