@@ -9,9 +9,6 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
     export PATH=/opt/conda/bin:$PATH
     export PYTHONPATH=$PYTHONPATH:/workspace
 
-%files
-    requirements.txt /workspace/requirements.txt
-
 %post
     export DEBIAN_FRONTEND=noninteractive
 
@@ -22,7 +19,7 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
         libgl1-mesa-glx \
         libglib2.0-0 \
         build-essential \
-        cmake \
+        python3-dev \
         && rm -rf /var/lib/apt/lists/*
 
     # Install Miniconda
@@ -49,11 +46,11 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
     /opt/conda/bin/conda install -y -n text2tex pytorch3d -c pytorch3d
     /opt/conda/bin/conda install -y -n text2tex xformers -c xformers
 
-    # Install requirements manually, skipping mathutils for now
-    /opt/conda/bin/conda run -n text2tex pip install trimesh scikit-learn opencv-python matplotlib imageio diffusers einops transformers open-clip-torch gradio pytorch-lightning==1.9.1 omegaconf triton accelerate objaverse iopath==0.1.10
+    # Install mathutils directly from PyPI
+    /opt/conda/bin/conda run -n text2tex pip install https://files.pythonhosted.org/packages/8f/3e/5a89834a56f46363d6fba69777a991d996e9c0b8e84a19495bc90a1c3f28/mathutils-3.3.0-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl
 
-    # Handle mathutils separately (install via conda)
-    /opt/conda/bin/conda install -y -n text2tex -c conda-forge blender
+    # Install other requirements
+    /opt/conda/bin/conda run -n text2tex pip install trimesh scikit-learn opencv-python matplotlib imageio diffusers einops transformers open-clip-torch gradio pytorch-lightning==1.9.1 omegaconf triton accelerate objaverse iopath==0.1.10
 
     # Create directories for models
     mkdir -p /workspace/models/ControlNet/models/
