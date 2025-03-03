@@ -48,15 +48,13 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
     # Install PyTorch and dependencies - ensure specific versions that work together
     /opt/conda/bin/conda install -y -n text2tex pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
 
-    # Install fvcore and iopath first (PyTorch3D dependencies)
-    /opt/conda/bin/conda run -n text2tex pip install fvcore iopath
+    # Install PyTorch3D from specific build for compatibility
+    /opt/conda/bin/conda run -n text2tex pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py39_cu113_pyt1121/download.html
 
     # Install other dependencies
+    /opt/conda/bin/conda run -n text2tex conda install -y -c fvcore -c iopath -c conda-forge fvcore iopath
     /opt/conda/bin/conda run -n text2tex conda install -y -c bottler nvidiacub
-    /opt/conda/bin/conda run -n text2tex pip install xformers
-
-    # Now install PyTorch3D from specific build
-    /opt/conda/bin/conda run -n text2tex pip install pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py39_cu113_pyt1121/download.html
+    /opt/conda/bin/conda run -n text2tex conda install -y -c xformers xformers
 
     # Build mathutils from the correct repository
     cd /tmp
@@ -74,11 +72,13 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
     cd /workspace
     /opt/conda/bin/conda run -n text2tex pip install -r requirements.txt
 
-    # Create directory for models if it doesn't exist
+    # Create directories for models if they don't exist
     mkdir -p /workspace/models/ControlNet/models/
 
-    # Download ControlNet model
-    wget -O /workspace/models/ControlNet/models/control_sd15_depth.pth https://huggingface.co/lllyasviel/ControlNet/resolve/main/models/control_sd15_depth.pth
+    # Download ControlNet model if it doesn't exist
+    if [ ! -f /workspace/models/ControlNet/models/control_sd15_depth.pth ]; then
+        wget -O /workspace/models/ControlNet/models/control_sd15_depth.pth https://huggingface.co/lllyasviel/ControlNet/resolve/main/models/control_sd15_depth.pth
+    fi
 
     # Create output directory if it doesn't exist
     mkdir -p /workspace/outputs/backpack
