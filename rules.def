@@ -8,9 +8,12 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
 %environment
     export PATH=/opt/conda/bin:$PATH
     export PYTHONPATH=$PYTHONPATH:/workspace
+    # Add CUDA and PyTorch libraries to path
+    export LD_LIBRARY_PATH=/opt/conda/envs/text2tex/lib:$LD_LIBRARY_PATH
 
 %files
-    requirements.txt /workspace/requirements.txt
+    # Copy the entire project directory to /workspace
+    ./* /workspace/
 
 %post
     export DEBIAN_FRONTEND=noninteractive
@@ -37,17 +40,21 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
     conda init bash
 
     # Create Text2Tex environment
-    conda create -y -n text2tex python=3.9.15
+    conda create -y -n text2tex python=3.9
 
     # Make conda activate command available
     echo "source /opt/conda/etc/profile.d/conda.sh" >> /.bashrc
 
-    # Install PyTorch and dependencies
+    # Install PyTorch and dependencies - ensure specific versions that work together
     /opt/conda/bin/conda install -y -n text2tex pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.3 -c pytorch
-    /opt/conda/bin/conda install -y -n text2tex -c fvcore -c iopath -c conda-forge fvcore iopath
-    /opt/conda/bin/conda install -y -n text2tex -c bottler nvidiacub
-    /opt/conda/bin/conda install -y -n text2tex pytorch3d -c pytorch3d
-    /opt/conda/bin/conda install -y -n text2tex xformers -c xformers
+
+    # Install PyTorch3D from specific build for compatibility
+    /opt/conda/bin/conda run -n text2tex pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py39_cu113_pyt1121/download.html
+
+    # Install other dependencies
+    /opt/conda/bin/conda run -n text2tex conda install -y -c fvcore -c iopath -c conda-forge fvcore iopath
+    /opt/conda/bin/conda run -n text2tex conda install -y -c bottler nvidiacub
+    /opt/conda/bin/conda run -n text2tex conda install -y -c xformers xformers
 
     # Build mathutils from the correct repository
     cd /tmp
@@ -61,15 +68,20 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
     # Now build and install
     /opt/conda/bin/conda run -n text2tex python setup.py install
 
-    # Install other requirements (excluding mathutils)
+    # Install requirements
     cd /workspace
     /opt/conda/bin/conda run -n text2tex pip install -r requirements.txt
 
-    # Create directories for models
+    # Create directories for models if they don't exist
     mkdir -p /workspace/models/ControlNet/models/
 
-    # Download ControlNet model
-    wget -O /workspace/models/ControlNet/models/control_sd15_depth.pth https://huggingface.co/lllyasviel/ControlNet/resolve/main/models/control_sd15_depth.pth
+    # Download ControlNet model if it doesn't exist
+    if [ ! -f /workspace/models/ControlNet/models/control_sd15_depth.pth ]; then
+        wget -O /workspace/models/ControlNet/models/control_sd15_depth.pth https://huggingface.co/lllyasviel/ControlNet/resolve/main/models/control_sd15_depth.pth
+    fi
+
+    # Create output directory if it doesn't exist
+    mkdir -p /workspace/outputs/backpack
 
     # Make workspace directory and add permissions
     chmod -R 777 /workspace
@@ -77,9 +89,11 @@ From: nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04
 %runscript
     source /opt/conda/etc/profile.d/conda.sh
     conda activate text2tex
+    cd /workspace
     exec "$@"
 
 %startscript
     source /opt/conda/etc/profile.d/conda.sh
     conda activate text2tex
+    cd /workspace
     exec python /workspace/scripts/generate_texture.py "$@"
